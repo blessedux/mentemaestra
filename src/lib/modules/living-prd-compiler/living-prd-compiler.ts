@@ -52,6 +52,8 @@ export class LivingPrdCompiler {
       compiledJson: prd,
       version,
       createdAt: this.now(),
+      // Keep an existing closeout across recompiles until regenerated.
+      nextActions: latest?.nextActions ?? null,
     });
 
     return prd;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import type { Closeout } from "@/lib/domain/closeout";
 import type { LivingPrd, LivingPrdPreviewDTO } from "@/lib/domain/living-prd";
 import type { MemoryFactDTO } from "@/lib/domain/memory-fact";
 import {
@@ -13,6 +14,7 @@ import { saveAndContinue } from "@/app/auth/actions";
 import { ChoiceChips } from "./choice-chips";
 import { LivingPrdPanel } from "./living-prd-panel";
 import { MemoryFactsPanel } from "./memory-facts-panel";
+import { NextActionsPanel } from "./next-actions-panel";
 
 type ChatClientProps = {
   initialMessages: UIMessage[];
@@ -41,6 +43,9 @@ export function ChatClient({
     () => new Set<string>(),
   );
   const [chipPending, setChipPending] = useState(false);
+  const [closeout, setCloseout] = useState<Closeout | null>(null);
+  const [closeoutLoading, setCloseoutLoading] = useState(false);
+  const closeoutRequested = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousStatus = useRef<string>("ready");
 
@@ -109,6 +114,32 @@ export function ChatClient({
     }
     previousStatus.current = status;
   }, [status, refreshSidePanels]);
+
+  // One-shot closeout when ready + authenticated + Living PRD saved.
+  useEffect(() => {
+    if (!editable || !prdPreview.ready || !prdPreview.prd) return;
+    if (closeoutRequested.current || closeout) return;
+
+    closeoutRequested.current = true;
+    setCloseoutLoading(true);
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/closeout");
+        if (!response.ok) {
+          closeoutRequested.current = false;
+          return;
+        }
+        const data = (await response.json()) as { closeout?: Closeout };
+        if (data.closeout) setCloseout(data.closeout);
+        else closeoutRequested.current = false;
+      } catch {
+        closeoutRequested.current = false;
+      } finally {
+        setCloseoutLoading(false);
+      }
+    })();
+  }, [editable, prdPreview.ready, prdPreview.prd, closeout]);
 
   const busy =
     status === "submitted" || status === "streaming" || chipPending;
@@ -202,7 +233,14 @@ export function ChatClient({
       <div className="mx-auto flex w-full max-w-5xl flex-1 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col px-4">
           <div className="flex-1 space-y-3 overflow-y-auto py-6">
-            {messages.length === 0 ? (
+            {closeoutLoading || closeout ? (
+              <NextActionsPanel
+                closeout={closeout}
+                loading={closeoutLoading && !closeout}
+              />
+            ) : null}
+
+            {messages.length === 0 && !closeout && !closeoutLoading ? (
               <p className="text-center text-sm text-zinc-500">
                 Escribe un mensaje para hablar con Maya.
               </p>

@@ -1,16 +1,31 @@
 import { randomUUID } from "node:crypto";
-import { convertToModelMessages, isStepCount, streamText } from "ai";
+import {
+  convertToModelMessages,
+  generateText,
+  isStepCount,
+  Output,
+  streamText,
+} from "ai";
+import type { Closeout } from "@/lib/domain/closeout";
+import { CloseoutSchema } from "@/lib/domain/closeout";
 import type {
   ConversationRole,
   ConversationTurn,
 } from "@/lib/domain/conversation-turn";
 import type { MemoryWriter } from "@/lib/modules/memory-writer";
 import { createCaptureMemoryFactTool } from "./capture-fact-tool";
+import {
+  buildCloseoutPrompt,
+  closeoutTurnPayload,
+  findCloseoutInTurns,
+  formatCloseoutMessage,
+} from "./closeout";
 import { createOfferChoicesTool } from "./offer-choices-tool";
 import { buildMayaSystemPrompt } from "./maya-prompt";
 import type {
   ConversationRuntimeDeps,
   ConversationTurnStore,
+  GenerateCloseoutOptions,
   StreamTurnOptions,
 } from "./types";
 
@@ -49,6 +64,71 @@ export class ConversationRuntime {
       toolCalls: toolCalls ?? null,
       createdAt: this.now(),
     });
+  }
+
+  /**
+   * One-shot closeout when onboarding is ready and Living PRD is saved.
+   * Idempotent: returns existing next_actions / closeout turn if present.
+   */
+  async generateCloseout(
+    sessionId: string,
+    options: GenerateCloseoutOptions,
+  ): Promise<{ closeout: Closeout; generated: boolean }> {
+    const latest = await options.livingPrdStore.getLatestByBusiness(
+      options.businessId,
+    );
+    if (latest?.nextActions) {
+      return { closeout: latest.nextActions, generated: false };
+    }
+
+    const turns = await this.turnStore.listBySession(sessionId);
+    const fromTurn = findCloseoutInTurns(turns);
+    if (fromTurn) {
+      if (latest) {
+        await options.livingPrdStore.updateNextActions(
+          options.businessId,
+          fromTurn,
+        );
+      }
+      return { closeout: fromTurn, generated: false };
+    }
+
+    const { output } = await generateText({
+      model: this.model,
+      system: [
+        buildMayaSystemPrompt(options.mission),
+        "Ahora estás cerrando el onboarding con próximos pasos de alto apalancamiento.",
+        "Responde solo con el objeto estructurado pedido (summary, actions, invitation).",
+      ].join("\n"),
+      prompt: buildCloseoutPrompt(options.prd, options.mission),
+      output: Output.object({ schema: CloseoutSchema }),
+    });
+
+    if (!output) {
+      throw new Error("Closeout generation returned no structured output");
+    }
+
+    const closeout = CloseoutSchema.parse(output);
+    const content = formatCloseoutMessage(closeout);
+
+    await this.persistTurn(
+      sessionId,
+      "assistant",
+      content,
+      closeoutTurnPayload(closeout),
+    );
+
+    const record =
+      latest ??
+      (await options.livingPrdStore.getLatestByBusiness(options.businessId));
+    if (record) {
+      await options.livingPrdStore.updateNextActions(
+        options.businessId,
+        closeout,
+      );
+    }
+
+    return { closeout, generated: true };
   }
 
   /**

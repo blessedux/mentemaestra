@@ -6,6 +6,13 @@ export {
   createConversationTurnStore,
 } from "./create-conversation-runtime";
 export { buildMayaSystemPrompt } from "./maya-prompt";
+export {
+  buildCloseoutPrompt,
+  closeoutTurnPayload,
+  findCloseoutInTurns,
+  formatCloseoutMessage,
+  parseCloseout,
+} from "./closeout";
 export { turnsToUIMessages, uiMessageText } from "./ui-message";
 export { createOfferChoicesTool } from "./offer-choices-tool";
 export { applyChoiceChip } from "./apply-choice-chip";
@@ -16,6 +23,7 @@ export {
 export type {
   ConversationRuntimeDeps,
   ConversationTurnStore,
+  GenerateCloseoutOptions,
   NewConversationTurnInput,
   StreamTurnOptions,
 } from "./types";
