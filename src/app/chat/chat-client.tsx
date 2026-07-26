@@ -3,34 +3,57 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import type { LivingPrdPreviewDTO } from "@/lib/domain/living-prd";
 import type { MemoryFactDTO } from "@/lib/domain/memory-fact";
+import { LivingPrdPanel } from "./living-prd-panel";
 import { MemoryFactsPanel } from "./memory-facts-panel";
+import { createSaveContinueStub } from "./save-continue-stub";
 
 type ChatClientProps = {
   initialMessages: UIMessage[];
   initialFacts: MemoryFactDTO[];
+  initialPrdPreview: LivingPrdPreviewDTO;
   missionLabel: string | null;
 };
 
 export function ChatClient({
   initialMessages,
   initialFacts,
+  initialPrdPreview,
   missionLabel,
 }: ChatClientProps) {
   const [input, setInput] = useState("");
   const [facts, setFacts] = useState(initialFacts);
+  const [prdPreview, setPrdPreview] = useState(initialPrdPreview);
   const [factsOpen, setFactsOpen] = useState(false);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousStatus = useRef<string>("ready");
 
-  const refreshFacts = useCallback(async () => {
+  const handleSaveContinue = useCallback(() => {
+    createSaveContinueStub((message) => {
+      setSaveToast(message);
+    })();
+  }, []);
+
+  const refreshSidePanels = useCallback(async () => {
     try {
-      const response = await fetch("/api/memory-facts");
-      if (!response.ok) return;
-      const data = (await response.json()) as { facts?: MemoryFactDTO[] };
-      if (data.facts) setFacts(data.facts);
+      const [factsRes, prdRes] = await Promise.all([
+        fetch("/api/memory-facts"),
+        fetch("/api/living-prd"),
+      ]);
+
+      if (factsRes.ok) {
+        const data = (await factsRes.json()) as { facts?: MemoryFactDTO[] };
+        if (data.facts) setFacts(data.facts);
+      }
+
+      if (prdRes.ok) {
+        const data = (await prdRes.json()) as LivingPrdPreviewDTO;
+        setPrdPreview(data);
+      }
     } catch {
-      // Keep existing facts if refresh fails.
+      // Keep existing panels if refresh fails.
     }
   }, []);
 
@@ -45,12 +68,31 @@ export function ChatClient({
 
   useEffect(() => {
     if (previousStatus.current === "streaming" && status === "ready") {
-      void refreshFacts();
+      void refreshSidePanels();
     }
     previousStatus.current = status;
-  }, [status, refreshFacts]);
+  }, [status, refreshSidePanels]);
 
   const busy = status === "submitted" || status === "streaming";
+
+  const sidePanel = (
+    <div className="flex h-full flex-col overflow-hidden bg-white">
+      <LivingPrdPanel
+        prd={prdPreview.prd}
+        ready={prdPreview.ready}
+        missingCategories={prdPreview.missingCategories}
+        onSaveContinue={handleSaveContinue}
+        toast={saveToast}
+      />
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <MemoryFactsPanel
+          facts={facts}
+          open
+          onToggle={() => undefined}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex h-dvh flex-col bg-zinc-50 text-zinc-900">
@@ -150,16 +192,19 @@ export function ChatClient({
           </form>
         </div>
 
-        <div className="hidden w-72 shrink-0 lg:block">
-          <MemoryFactsPanel
-            facts={facts}
-            open
-            onToggle={() => undefined}
-          />
+        <div className="hidden w-80 shrink-0 border-l border-zinc-200 lg:block">
+          {sidePanel}
         </div>
       </div>
 
       <div className="border-t border-zinc-200 bg-white lg:hidden">
+        <LivingPrdPanel
+          prd={prdPreview.prd}
+          ready={prdPreview.ready}
+          missingCategories={prdPreview.missingCategories}
+          onSaveContinue={handleSaveContinue}
+          toast={saveToast}
+        />
         <MemoryFactsPanel
           facts={facts}
           open={factsOpen}

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import type { LivingPrdPreviewDTO } from "@/lib/domain/living-prd";
 import { MISSION_LABELS } from "@/lib/domain/mission";
 import { toMemoryFactDTO } from "@/lib/domain/memory-fact";
 import {
   createConversationTurnStore,
   turnsToUIMessages,
 } from "@/lib/modules/conversation-runtime";
+import { createLivingPrdCompiler } from "@/lib/modules/living-prd-compiler";
 import { createMemoryWriter } from "@/lib/modules/memory-writer";
+import { createOnboardingPolicy } from "@/lib/modules/onboarding-policy";
 import {
   createSessionOrchestrator,
   SESSION_COOKIE_NAME,
@@ -29,19 +32,34 @@ export default async function ChatPage() {
       return <NoSessionState detail="Tu sesión expiró o no es válida." />;
     }
 
-    const [turns, facts] = await Promise.all([
+    const memoryWriter = createMemoryWriter();
+    const compiler = createLivingPrdCompiler();
+    const policy = createOnboardingPolicy();
+
+    const [turns, facts, prd, ready, missingCategories] = await Promise.all([
       createConversationTurnStore().listBySession(session.id),
-      createMemoryWriter().getFactsBySession(session.id),
+      memoryWriter.getFactsBySession(session.id),
+      compiler.compile(session.id),
+      policy.isReady(session.id),
+      policy.missingCategories(session.id),
     ]);
+
     const initialMessages = turnsToUIMessages(turns);
     const missionLabel = session.mission
       ? MISSION_LABELS[session.mission]
       : null;
 
+    const initialPrdPreview: LivingPrdPreviewDTO = {
+      prd,
+      ready,
+      missingCategories,
+    };
+
     return (
       <ChatClient
         initialMessages={initialMessages}
         initialFacts={facts.map(toMemoryFactDTO)}
+        initialPrdPreview={initialPrdPreview}
         missionLabel={missionLabel}
       />
     );
