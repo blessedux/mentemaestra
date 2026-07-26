@@ -7,6 +7,12 @@ export {
 } from "./create-conversation-runtime";
 export { buildMayaSystemPrompt } from "./maya-prompt";
 export { turnsToUIMessages, uiMessageText } from "./ui-message";
+export { createOfferChoicesTool } from "./offer-choices-tool";
+export { applyChoiceChip } from "./apply-choice-chip";
+export {
+  extractOfferChoices,
+  type OfferChoicesPart,
+} from "./extract-offer-choices";
 export type {
   ConversationRuntimeDeps,
   ConversationTurnStore,

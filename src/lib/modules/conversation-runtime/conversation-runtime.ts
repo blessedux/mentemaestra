@@ -6,6 +6,7 @@ import type {
 } from "@/lib/domain/conversation-turn";
 import type { MemoryWriter } from "@/lib/modules/memory-writer";
 import { createCaptureMemoryFactTool } from "./capture-fact-tool";
+import { createOfferChoicesTool } from "./offer-choices-tool";
 import { buildMayaSystemPrompt } from "./maya-prompt";
 import type {
   ConversationRuntimeDeps,
@@ -15,7 +16,7 @@ import type {
 
 /**
  * Wraps the Vercel AI SDK streaming chat with Maya's prompt,
- * turn persistence, and MemoryFact write-back via tools.
+ * turn persistence, MemoryFact write-back, and choice chips.
  */
 export class ConversationRuntime {
   private readonly turnStore: ConversationTurnStore;
@@ -61,8 +62,9 @@ export class ConversationRuntime {
   ) {
     const userTurn = await this.persistTurn(sessionId, "user", userMessage);
 
-    const tools =
-      this.memoryWriter != null
+    const tools = {
+      offerChoices: createOfferChoicesTool(),
+      ...(this.memoryWriter != null
         ? {
             captureMemoryFact: createCaptureMemoryFactTool({
               memoryWriter: this.memoryWriter,
@@ -71,14 +73,15 @@ export class ConversationRuntime {
               provenanceId: userTurn.id,
             }),
           }
-        : undefined;
+        : {}),
+    };
 
     return streamText({
       model: this.model,
       system: buildMayaSystemPrompt(options.mission),
       messages: await convertToModelMessages(options.messages),
       tools,
-      stopWhen: tools ? isStepCount(5) : undefined,
+      stopWhen: isStepCount(5),
       onFinish: async ({ text, toolCalls }) => {
         const serializedToolCalls =
           toolCalls.length > 0 ? toolCalls : null;

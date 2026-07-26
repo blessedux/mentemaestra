@@ -5,6 +5,11 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import type { LivingPrdPreviewDTO } from "@/lib/domain/living-prd";
 import type { MemoryFactDTO } from "@/lib/domain/memory-fact";
+import {
+  extractOfferChoices,
+  type OfferChoicesPart,
+} from "@/lib/modules/conversation-runtime/extract-offer-choices";
+import { ChoiceChips } from "./choice-chips";
 import { LivingPrdPanel } from "./living-prd-panel";
 import { MemoryFactsPanel } from "./memory-facts-panel";
 import { createSaveContinueStub } from "./save-continue-stub";
@@ -27,6 +32,11 @@ export function ChatClient({
   const [prdPreview, setPrdPreview] = useState(initialPrdPreview);
   const [factsOpen, setFactsOpen] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [chipError, setChipError] = useState<string | null>(null);
+  const [consumedToolCallIds, setConsumedToolCallIds] = useState(
+    () => new Set<string>(),
+  );
+  const [chipPending, setChipPending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousStatus = useRef<string>("ready");
 
@@ -73,7 +83,56 @@ export function ChatClient({
     previousStatus.current = status;
   }, [status, refreshSidePanels]);
 
-  const busy = status === "submitted" || status === "streaming";
+  const busy =
+    status === "submitted" || status === "streaming" || chipPending;
+
+  const handleChipSelect = useCallback(
+    async (offer: OfferChoicesPart, optionId: string, label: string) => {
+      if (busy || consumedToolCallIds.has(offer.toolCallId)) return;
+
+      setChipError(null);
+      setChipPending(true);
+      setConsumedToolCallIds((prev) => new Set(prev).add(offer.toolCallId));
+
+      const interactionId = `${offer.toolCallId}:${optionId}`;
+
+      try {
+        const response = await fetch("/api/choice-chip", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            interactionId,
+            factKey: offer.factKey,
+            category: offer.category,
+            value: label,
+            optionId,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = (await response.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          throw new Error(data?.error ?? "No se pudo registrar la opción");
+        }
+
+        await sendMessage({ text: label });
+        void refreshSidePanels();
+      } catch (err) {
+        setConsumedToolCallIds((prev) => {
+          const next = new Set(prev);
+          next.delete(offer.toolCallId);
+          return next;
+        });
+        setChipError(
+          err instanceof Error ? err.message : "No se pudo usar el chip",
+        );
+      } finally {
+        setChipPending(false);
+      }
+    },
+    [busy, consumedToolCallIds, refreshSidePanels, sendMessage],
+  );
 
   const sidePanel = (
     <div className="flex h-full flex-col overflow-hidden bg-white">
@@ -126,10 +185,10 @@ export function ChatClient({
                 )
                 .map((part) => part.text)
                 .join("");
-
-              if (!text) return null;
-
+              const offers = extractOfferChoices(message);
               const isUser = message.role === "user";
+
+              if (!text && offers.length === 0) return null;
 
               return (
                 <div
@@ -149,6 +208,14 @@ export function ChatClient({
                       </p>
                     ) : null}
                     {text}
+                    {!isUser ? (
+                      <ChoiceChips
+                        offers={offers}
+                        disabled={busy}
+                        consumedToolCallIds={consumedToolCallIds}
+                        onSelect={handleChipSelect}
+                      />
+                    ) : null}
                   </div>
                 </div>
               );
@@ -156,9 +223,9 @@ export function ChatClient({
             <div ref={bottomRef} />
           </div>
 
-          {error ? (
+          {error || chipError ? (
             <p className="mb-2 text-sm text-red-700" role="alert">
-              {error.message}
+              {chipError ?? error?.message}
             </p>
           ) : null}
 
