@@ -42,7 +42,38 @@ export class SessionOrchestrator implements SessionOrchestratorApi {
     return session;
   }
 
+  async getSessionById(sessionId: string): Promise<Session | null> {
+    const session = await this.store.findById(sessionId);
+    if (!session) return null;
+
+    if (session.expiresAt.getTime() <= this.now().getTime()) {
+      return null;
+    }
+
+    return session;
+  }
+
   async attachMission(sessionId: string, mission: Mission): Promise<void> {
     await this.store.updateMission(sessionId, mission);
+  }
+
+  /** Bind an anonymous session to a Business (AuthBridge merge). */
+  async bindBusiness(sessionId: string, businessId: string): Promise<void> {
+    const session = await this.store.findById(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+
+    if (session.businessId != null && session.businessId !== businessId) {
+      throw new Error(
+        `Session ${sessionId} already bound to a different business`,
+      );
+    }
+
+    if (session.businessId === businessId) {
+      return;
+    }
+
+    await this.store.updateBusinessId(sessionId, businessId);
   }
 }

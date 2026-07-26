@@ -89,4 +89,17 @@ describe("SessionOrchestrator", () => {
       ),
     ).rejects.toThrow(/Session not found/);
   });
+
+  it("binds a business idempotently", async () => {
+    const orchestrator = new SessionOrchestrator(new MemorySessionStore());
+    const session = await orchestrator.createSession("leads");
+    const businessId = "22222222-2222-4222-8222-222222222222";
+
+    await orchestrator.bindBusiness(session.id, businessId);
+    await orchestrator.bindBusiness(session.id, businessId);
+
+    const fetched = await orchestrator.getSessionById(session.id);
+    expect(fetched?.businessId).toBe(businessId);
+  });
 });
+

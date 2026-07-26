@@ -40,4 +40,15 @@ export class MemorySessionStore implements SessionStore {
     }
     this.byId.set(sessionId, { ...session, mission });
   }
+
+  async updateBusinessId(
+    sessionId: string,
+    businessId: string,
+  ): Promise<void> {
+    const session = this.byId.get(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    this.byId.set(sessionId, { ...session, businessId });
+  }
 }

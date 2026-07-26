@@ -135,4 +135,24 @@ export class SupabaseMemoryFactStore implements MemoryFactStore {
     }
     return ((data ?? []) as FactRow[]).map(rowToFact);
   }
+
+  async bindSessionToBusiness(
+    sessionId: string,
+    businessId: string,
+    updatedAt: Date,
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .from("memory_facts")
+      .update({
+        business_id: businessId,
+        updated_at: updatedAt.toISOString(),
+      })
+      .eq("session_id", sessionId);
+
+    if (error) {
+      throw new Error(
+        `Failed to bind memory facts to business: ${error.message}`,
+      );
+    }
+  }
 }

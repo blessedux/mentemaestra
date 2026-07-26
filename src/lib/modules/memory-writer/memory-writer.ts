@@ -45,4 +45,15 @@ export class MemoryWriter implements MemoryWriterApi {
   async getFactsByBusiness(businessId: string): Promise<MemoryFact[]> {
     return this.store.listByBusiness(businessId);
   }
+
+  async bindSessionToBusiness(
+    sessionId: string,
+    businessId: string,
+  ): Promise<void> {
+    await this.store.bindSessionToBusiness(
+      sessionId,
+      businessId,
+      this.now(),
+    );
+  }
 }

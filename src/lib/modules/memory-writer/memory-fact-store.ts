@@ -49,4 +49,15 @@ export class InMemoryFactStore implements MemoryFactStore {
       .map((fact) => ({ ...fact }))
       .sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
   }
+
+  async bindSessionToBusiness(
+    sessionId: string,
+    businessId: string,
+    updatedAt: Date,
+  ): Promise<void> {
+    for (const [mapKey, fact] of this.facts) {
+      if (fact.sessionId !== sessionId) continue;
+      this.facts.set(mapKey, { ...fact, businessId, updatedAt });
+    }
+  }
 }

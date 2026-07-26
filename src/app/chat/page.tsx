@@ -16,7 +16,12 @@ import {
 } from "@/lib/modules/session-orchestrator";
 import { ChatClient } from "./chat-client";
 
-export default async function ChatPage() {
+type ChatPageProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function ChatPage({ searchParams }: ChatPageProps) {
+  const params = await searchParams;
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -55,12 +60,19 @@ export default async function ChatPage() {
       missingCategories,
     };
 
+    const initialNotice = params.error
+      ? `No se pudo guardar: ${decodeURIComponent(params.error)}`
+      : session.businessId
+        ? "Sesión vinculada a tu negocio."
+        : null;
+
     return (
       <ChatClient
         initialMessages={initialMessages}
         initialFacts={facts.map(toMemoryFactDTO)}
         initialPrdPreview={initialPrdPreview}
         missionLabel={missionLabel}
+        initialNotice={initialNotice}
       />
     );
   } catch (err) {

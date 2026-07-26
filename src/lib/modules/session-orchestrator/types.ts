@@ -16,10 +16,13 @@ export interface SessionStore {
   findByCookieToken(cookieToken: string): Promise<Session | null>;
   findById(sessionId: string): Promise<Session | null>;
   updateMission(sessionId: string, mission: Mission): Promise<void>;
+  updateBusinessId(sessionId: string, businessId: string): Promise<void>;
 }
 
 export interface SessionOrchestratorApi {
   createSession(mission?: Mission): Promise<Session>;
   getSession(cookieToken: string): Promise<Session | null>;
+  getSessionById(sessionId: string): Promise<Session | null>;
   attachMission(sessionId: string, mission: Mission): Promise<void>;
+  bindBusiness(sessionId: string, businessId: string): Promise<void>;
 }

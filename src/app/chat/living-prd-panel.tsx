@@ -6,14 +6,13 @@ import {
 } from "@/lib/domain/memory-fact";
 import type { LivingPrd } from "@/lib/domain/living-prd";
 import { MISSION_LABELS } from "@/lib/domain/mission";
-import { SAVE_CONTINUE_HASH } from "./save-continue-stub";
 
 type LivingPrdPanelProps = {
   prd: LivingPrd | null;
   ready: boolean;
   missingCategories: string[];
   onSaveContinue: () => void;
-  toast: string | null;
+  notice: string | null;
 };
 
 export function LivingPrdPanel({
@@ -21,7 +20,7 @@ export function LivingPrdPanel({
   ready,
   missingCategories,
   onSaveContinue,
-  toast,
+  notice,
 }: LivingPrdPanelProps) {
   return (
     <section className="border-b border-zinc-100 px-4 py-3">
@@ -74,23 +73,20 @@ export function LivingPrdPanel({
           <PrdField label="Marca" value={prd.brand_notes} />
           <PrdField label="Visual" value={prd.visual_preferences} />
 
-          <a
-            href={SAVE_CONTINUE_HASH}
-            onClick={(event) => {
-              event.preventDefault();
-              onSaveContinue();
-            }}
+          <button
+            type="button"
+            onClick={onSaveContinue}
             className="mt-3 inline-flex w-full items-center justify-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-800"
           >
             Guardar y continuar
-          </a>
+          </button>
 
-          {toast ? (
+          {notice ? (
             <p
               className="rounded-md bg-zinc-100 px-3 py-2 text-xs leading-relaxed text-zinc-700"
               role="status"
             >
-              {toast}
+              {notice}
             </p>
           ) : null}
         </div>

@@ -93,4 +93,23 @@ export class SupabaseSessionStore implements SessionStore {
       throw new Error(`Session not found: ${sessionId}`);
     }
   }
+
+  async updateBusinessId(
+    sessionId: string,
+    businessId: string,
+  ): Promise<void> {
+    const { data, error } = await this.supabase
+      .from("sessions")
+      .update({ business_id: businessId })
+      .eq("id", sessionId)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to bind business: ${error.message}`);
+    }
+    if (!data) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+  }
 }

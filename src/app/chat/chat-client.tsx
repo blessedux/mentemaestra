@@ -9,16 +9,17 @@ import {
   extractOfferChoices,
   type OfferChoicesPart,
 } from "@/lib/modules/conversation-runtime/extract-offer-choices";
+import { saveAndContinue } from "@/app/auth/actions";
 import { ChoiceChips } from "./choice-chips";
 import { LivingPrdPanel } from "./living-prd-panel";
 import { MemoryFactsPanel } from "./memory-facts-panel";
-import { createSaveContinueStub } from "./save-continue-stub";
 
 type ChatClientProps = {
   initialMessages: UIMessage[];
   initialFacts: MemoryFactDTO[];
   initialPrdPreview: LivingPrdPreviewDTO;
   missionLabel: string | null;
+  initialNotice?: string | null;
 };
 
 export function ChatClient({
@@ -26,12 +27,13 @@ export function ChatClient({
   initialFacts,
   initialPrdPreview,
   missionLabel,
+  initialNotice = null,
 }: ChatClientProps) {
   const [input, setInput] = useState("");
   const [facts, setFacts] = useState(initialFacts);
   const [prdPreview, setPrdPreview] = useState(initialPrdPreview);
   const [factsOpen, setFactsOpen] = useState(false);
-  const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(initialNotice);
   const [chipError, setChipError] = useState<string | null>(null);
   const [consumedToolCallIds, setConsumedToolCallIds] = useState(
     () => new Set<string>(),
@@ -41,9 +43,8 @@ export function ChatClient({
   const previousStatus = useRef<string>("ready");
 
   const handleSaveContinue = useCallback(() => {
-    createSaveContinueStub((message) => {
-      setSaveToast(message);
-    })();
+    setSaveNotice("Abriendo el soft gate…");
+    void saveAndContinue();
   }, []);
 
   const refreshSidePanels = useCallback(async () => {
@@ -141,7 +142,7 @@ export function ChatClient({
         ready={prdPreview.ready}
         missingCategories={prdPreview.missingCategories}
         onSaveContinue={handleSaveContinue}
-        toast={saveToast}
+        notice={saveNotice}
       />
       <div className="min-h-0 flex-1 overflow-hidden">
         <MemoryFactsPanel
@@ -270,7 +271,7 @@ export function ChatClient({
           ready={prdPreview.ready}
           missingCategories={prdPreview.missingCategories}
           onSaveContinue={handleSaveContinue}
-          toast={saveToast}
+          notice={saveNotice}
         />
         <MemoryFactsPanel
           facts={facts}

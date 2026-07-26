@@ -23,10 +23,16 @@ export interface MemoryFactStore {
   ): Promise<MemoryFact | null>;
   listBySession(sessionId: string): Promise<MemoryFact[]>;
   listByBusiness(businessId: string): Promise<MemoryFact[]>;
+  bindSessionToBusiness(
+    sessionId: string,
+    businessId: string,
+    updatedAt: Date,
+  ): Promise<void>;
 }
 
 export interface MemoryWriterApi {
   upsertFact(fact: MemoryFactInput): Promise<MemoryFact>;
   getFactsBySession(sessionId: string): Promise<MemoryFact[]>;
   getFactsByBusiness(businessId: string): Promise<MemoryFact[]>;
+  bindSessionToBusiness(sessionId: string, businessId: string): Promise<void>;
 }
