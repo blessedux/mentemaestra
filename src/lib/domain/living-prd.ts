@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CloseoutSchema } from "./closeout";
 import { MissionSchema } from "./mission";
 
 /** Compiled Living PRD document (CONTEXT.md). */
@@ -21,6 +22,7 @@ export const LivingPrdRecordSchema = z.object({
   compiledJson: LivingPrdSchema,
   version: z.number().int().positive(),
   createdAt: z.date(),
+  nextActions: CloseoutSchema.nullable(),
 });
 
 export type LivingPrdRecord = z.infer<typeof LivingPrdRecordSchema>;
