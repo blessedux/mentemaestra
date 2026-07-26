@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build
+dist/
+build/
+.next/
+out/
+.turbo/
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs / debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+*.log
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# misc
+coverage/
+.vercel/
+tmp/
