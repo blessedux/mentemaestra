@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import type { LivingPrdPreviewDTO } from "@/lib/domain/living-prd";
+import type { LivingPrd, LivingPrdPreviewDTO } from "@/lib/domain/living-prd";
 import type { MemoryFactDTO } from "@/lib/domain/memory-fact";
 import {
   extractOfferChoices,
@@ -20,6 +20,7 @@ type ChatClientProps = {
   initialPrdPreview: LivingPrdPreviewDTO;
   missionLabel: string | null;
   initialNotice?: string | null;
+  editable?: boolean;
 };
 
 export function ChatClient({
@@ -28,6 +29,7 @@ export function ChatClient({
   initialPrdPreview,
   missionLabel,
   initialNotice = null,
+  editable = false,
 }: ChatClientProps) {
   const [input, setInput] = useState("");
   const [facts, setFacts] = useState(initialFacts);
@@ -67,6 +69,30 @@ export function ChatClient({
       // Keep existing panels if refresh fails.
     }
   }, []);
+
+  const handleFactSaved = useCallback(
+    (fact: MemoryFactDTO) => {
+      setFacts((prev) => {
+        const index = prev.findIndex((item) => item.key === fact.key);
+        if (index === -1) return [...prev, fact];
+        const next = [...prev];
+        next[index] = fact;
+        return next;
+      });
+      setSaveNotice("Hecho actualizado.");
+      void refreshSidePanels();
+    },
+    [refreshSidePanels],
+  );
+
+  const handlePrdSaved = useCallback(
+    (prd: LivingPrd) => {
+      setPrdPreview((prev) => ({ ...prev, prd, ready: true }));
+      setSaveNotice("PRD actualizado.");
+      void refreshSidePanels();
+    },
+    [refreshSidePanels],
+  );
 
   const { messages, sendMessage, status, error } = useChat({
     messages: initialMessages,
@@ -143,12 +169,16 @@ export function ChatClient({
         missingCategories={prdPreview.missingCategories}
         onSaveContinue={handleSaveContinue}
         notice={saveNotice}
+        editable={editable}
+        onPrdSaved={handlePrdSaved}
       />
       <div className="min-h-0 flex-1 overflow-hidden">
         <MemoryFactsPanel
           facts={facts}
           open
           onToggle={() => undefined}
+          editable={editable}
+          onFactSaved={handleFactSaved}
         />
       </div>
     </div>
@@ -272,11 +302,15 @@ export function ChatClient({
           missingCategories={prdPreview.missingCategories}
           onSaveContinue={handleSaveContinue}
           notice={saveNotice}
+          editable={editable}
+          onPrdSaved={handlePrdSaved}
         />
         <MemoryFactsPanel
           facts={facts}
           open={factsOpen}
           onToggle={() => setFactsOpen((value) => !value)}
+          editable={editable}
+          onFactSaved={handleFactSaved}
         />
       </div>
     </div>

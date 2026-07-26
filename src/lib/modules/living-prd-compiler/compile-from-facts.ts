@@ -5,6 +5,7 @@ import {
 import type { MemoryFact } from "@/lib/domain/memory-fact";
 import type { MemoryFactCategory } from "@/lib/domain/memory-fact";
 import { parseMission, type Mission } from "@/lib/domain/mission";
+import { splitFactListValue } from "./decompose-prd-edits";
 
 function groupByCategory(
   facts: MemoryFact[],
@@ -80,12 +81,12 @@ export function compileFromFacts(
       "primary_goal",
       "goal",
       "goals",
-    ]),
+    ]).flatMap(splitFactListValue),
     pain_points: collectValues(categories.pain, [
       "pain_points",
       "pain_point",
       "pain",
-    ]),
+    ]).flatMap(splitFactListValue),
     brand_notes:
       keys.get("brand_notes")?.value ??
       keys.get("brand_tone")?.value ??

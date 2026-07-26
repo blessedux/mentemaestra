@@ -14,6 +14,7 @@ import {
   createSessionOrchestrator,
   SESSION_COOKIE_NAME,
 } from "@/lib/modules/session-orchestrator";
+import { createClient } from "@/lib/supabase/server";
 import { ChatClient } from "./chat-client";
 
 type ChatPageProps = {
@@ -41,13 +42,18 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
     const compiler = createLivingPrdCompiler();
     const policy = createOnboardingPolicy();
 
-    const [turns, facts, prd, ready, missingCategories] = await Promise.all([
-      createConversationTurnStore().listBySession(session.id),
-      memoryWriter.getFactsBySession(session.id),
-      compiler.compile(session.id),
-      policy.isReady(session.id),
-      policy.missingCategories(session.id),
-    ]);
+    const [turns, facts, prd, ready, missingCategories, auth] =
+      await Promise.all([
+        createConversationTurnStore().listBySession(session.id),
+        memoryWriter.getFactsBySession(session.id),
+        compiler.compile(session.id),
+        policy.isReady(session.id),
+        policy.missingCategories(session.id),
+        createClient().then((supabase) => supabase.auth.getUser()),
+      ]);
+
+    const user = auth.data.user;
+    const editable = Boolean(user && session.businessId);
 
     const initialMessages = turnsToUIMessages(turns);
     const missionLabel = session.mission
@@ -62,9 +68,11 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
 
     const initialNotice = params.error
       ? `No se pudo guardar: ${decodeURIComponent(params.error)}`
-      : session.businessId
-        ? "Sesión vinculada a tu negocio."
-        : null;
+      : editable
+        ? "Sesión vinculada — puedes editar memoria y PRD."
+        : session.businessId
+          ? "Sesión vinculada a tu negocio."
+          : null;
 
     return (
       <ChatClient
@@ -73,6 +81,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
         initialPrdPreview={initialPrdPreview}
         missionLabel={missionLabel}
         initialNotice={initialNotice}
+        editable={editable}
       />
     );
   } catch (err) {
