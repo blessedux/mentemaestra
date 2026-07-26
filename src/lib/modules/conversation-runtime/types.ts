@@ -4,6 +4,7 @@ import type {
   ConversationRole,
   ConversationTurn,
 } from "@/lib/domain/conversation-turn";
+import type { MemoryWriter } from "@/lib/modules/memory-writer";
 
 export type NewConversationTurnInput = {
   id: string;
@@ -23,10 +24,13 @@ export interface ConversationTurnStore {
 export type StreamTurnOptions = {
   messages: UIMessage[];
   mission: Mission | null;
+  /** Optional business binding for facts written this turn. */
+  businessId?: string | null;
 };
 
 export type ConversationRuntimeDeps = {
   turnStore: ConversationTurnStore;
   model: LanguageModel;
+  memoryWriter?: MemoryWriter;
   now?: () => Date;
 };

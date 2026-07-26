@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { MISSION_LABELS } from "@/lib/domain/mission";
+import { toMemoryFactDTO } from "@/lib/domain/memory-fact";
 import {
   createConversationTurnStore,
   turnsToUIMessages,
 } from "@/lib/modules/conversation-runtime";
+import { createMemoryWriter } from "@/lib/modules/memory-writer";
 import {
   createSessionOrchestrator,
   SESSION_COOKIE_NAME,
@@ -27,9 +29,10 @@ export default async function ChatPage() {
       return <NoSessionState detail="Tu sesión expiró o no es válida." />;
     }
 
-    const turns = await createConversationTurnStore().listBySession(
-      session.id,
-    );
+    const [turns, facts] = await Promise.all([
+      createConversationTurnStore().listBySession(session.id),
+      createMemoryWriter().getFactsBySession(session.id),
+    ]);
     const initialMessages = turnsToUIMessages(turns);
     const missionLabel = session.mission
       ? MISSION_LABELS[session.mission]
@@ -38,6 +41,7 @@ export default async function ChatPage() {
     return (
       <ChatClient
         initialMessages={initialMessages}
+        initialFacts={facts.map(toMemoryFactDTO)}
         missionLabel={missionLabel}
       />
     );

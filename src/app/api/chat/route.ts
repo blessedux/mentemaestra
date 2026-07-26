@@ -47,6 +47,7 @@ export async function POST(req: Request) {
     const result = await runtime.streamTurn(session.id, userMessage, {
       messages,
       mission: session.mission,
+      businessId: session.businessId,
     });
 
     return result.toUIMessageStreamResponse({

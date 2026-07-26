@@ -1,5 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
+import { createMemoryWriter } from "@/lib/modules/memory-writer";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { ConversationRuntime } from "./conversation-runtime";
 import { SupabaseConversationTurnStore } from "./supabase-conversation-turn-store";
@@ -18,12 +19,13 @@ function getOpenAIModel(): LanguageModel {
   return openai(modelId);
 }
 
-/** Production runtime: Supabase turns + OpenAI model. */
+/** Production runtime: Supabase turns + MemoryWriter tool + OpenAI model. */
 export function createConversationRuntime(
   model?: LanguageModel,
 ): ConversationRuntime {
   return new ConversationRuntime({
     turnStore: createConversationTurnStore(),
+    memoryWriter: createMemoryWriter(),
     model: model ?? getOpenAIModel(),
   });
 }
